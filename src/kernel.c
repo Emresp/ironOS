@@ -1,6 +1,7 @@
 #include <cpu/gdt.h>
 #include <cpu/idt.h>
 #include <debug/logging.h>
+#include <pmio/pic.h>
 
 // Halt and catch fire function
 static void hcf(void) {
@@ -26,6 +27,8 @@ void kmain(void) {
 	log(LL_INFO, "Initilized GDT");
 	init_idt();
 	log(LL_INFO, "Initilized IDT");
+	init_pic();
+	log(LL_INFO, "Initilized PIC");
 	log(LL_INFO, "Kernel initilization succeeded");
 
 	// Stop execution
