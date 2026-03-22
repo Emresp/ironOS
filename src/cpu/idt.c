@@ -1,4 +1,5 @@
 #include <cpu/idt.h>
+#include <cpu/irq.h>
 #include <debug/logging.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -38,6 +39,7 @@ struct idt_ptr {
 
 #define KERNEL_CS 0x08
 #define EXCEPTION_COUNT 32
+#define IRQ_COUNT 16
 #define IDT_ENTRY_COUNT 256
 
 struct idt_gate_descriptor idt_vector[IDT_ENTRY_COUNT] = {0};
@@ -46,18 +48,6 @@ struct idt_gate_descriptor idt_vector[IDT_ENTRY_COUNT] = {0};
 typedef void (*isr_stub_t)(void);
 extern isr_stub_t isr_stub_table[];
 extern void load_idt(struct idt_ptr*);
-
-struct interrupt_frame {
-	uint64_t r15, r14, r13, r12, r11, r10, r9, r8;
-	uint64_t rbp, rdi, rsi, rdx, rcx, rbx, rax;
-	uint64_t vector;
-	uint64_t error_code;
-	uint64_t rip;
-	uint64_t cs;
-	uint64_t rflags;
-	uint64_t rsp;
-	uint64_t ss;
-};
 
 static const char* exception_names[] = {
     "Divide Error",                   // 0  #DE
@@ -86,7 +76,7 @@ static const char* exception_names[] = {
 
 // We can dynamically change the exception handler. For testing of the IDT we use a custom exception
 // handler
-void (*active_exception_handler)(struct interrupt_frame*) = NULL;
+void (*active_isr_handler)(struct interrupt_frame*) = NULL;
 
 static inline struct idt_ptr make_idtr() {
 	return (struct idt_ptr){.size = sizeof(idt_vector) - 1, .offset = (uint64_t)&idt_vector};
@@ -123,6 +113,14 @@ static void install_exception_descriptors() {
 	}
 }
 
+static void install_irq_descriptors() {
+	for (int i = 0; i < IRQ_COUNT; i++) {
+		uint8_t gate_type = IDT_INTERRUPT_GATE;
+		install_idt_descriptor(32 + i, isr_stub_table[32 + i],
+		                       gate_type);  // IRQs start at vector 32
+	}
+}
+
 static void exception_handler(struct interrupt_frame* frame) {
 	if (frame->vector < sizeof(exception_names) / sizeof(exception_names[0])) {
 		log(LL_ERR, (char*)exception_names[frame->vector]);
@@ -136,10 +134,26 @@ static void exception_handler(struct interrupt_frame* frame) {
 	}
 }
 
-void init_idt() {
-	active_exception_handler = exception_handler;  // install default exception handler
+static void isr_handler(struct interrupt_frame* frame) {
+	if (frame->vector <= 31) {
+		exception_handler(frame);
+	}
+	else if (frame->vector <= 47) {
+		irq_handler(frame);
+	}
+	else {
+		log(LL_ERR, "Unknown interrupt");
+		for (;;) {
+			asm("hlt");
+		}
+	}
+}
 
-	install_exception_descriptors();  // only installs descriptors for CPU exceptions
+void init_idt() {
+	active_isr_handler = isr_handler;
+
+	install_exception_descriptors();
+	install_irq_descriptors();
 
 	struct idt_ptr idtr = make_idtr();
 	load_idt(&idtr);
