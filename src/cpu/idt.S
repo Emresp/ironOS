@@ -45,6 +45,22 @@ isr_no_err 28
 isr_no_err 29
 isr_no_err 30
 isr_no_err 31
+isr_no_err 32
+isr_no_err 33
+isr_no_err 34
+isr_no_err 35
+isr_no_err 36
+isr_no_err 37
+isr_no_err 38
+isr_no_err 39
+isr_no_err 40
+isr_no_err 41
+isr_no_err 42
+isr_no_err 43
+isr_no_err 44
+isr_no_err 45
+isr_no_err 46
+isr_no_err 47
 
 isr_common_stub:
     pushq %rax
@@ -65,7 +81,7 @@ isr_common_stub:
 
     cld
     movq %rsp, %rdi
-    movq active_exception_handler(%rip), %rax
+    movq active_isr_handler(%rip), %rax
     call *%rax
 
     popq %r15
@@ -100,6 +116,10 @@ isr_stub_table:
     .quad isr_stub_20, isr_stub_21, isr_stub_22, isr_stub_23
     .quad isr_stub_24, isr_stub_25, isr_stub_26, isr_stub_27
     .quad isr_stub_28, isr_stub_29, isr_stub_30, isr_stub_31
+    .quad isr_stub_32, isr_stub_33, isr_stub_34, isr_stub_35
+    .quad isr_stub_36, isr_stub_37, isr_stub_38, isr_stub_39
+    .quad isr_stub_40, isr_stub_41, isr_stub_42, isr_stub_43
+    .quad isr_stub_44, isr_stub_45, isr_stub_46, isr_stub_47
 
 # First argument (struct idt_ptr*) in RDI
 .section .text

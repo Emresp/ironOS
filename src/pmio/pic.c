@@ -45,17 +45,49 @@ static void remap_pic(int offset1, int offset2) {
 	port_byte_out(PIC2_DATA, ICW4_8086);
 	io_wait();
 
-	// Unmask both PICs
-	port_byte_out(PIC1_DATA, 0);
-	port_byte_out(PIC2_DATA, 0);
+	// Mask all IRQs. Unmask individually as dispatchers are installed.
+	port_byte_out(PIC1_DATA, 0xFF);
+	port_byte_out(PIC2_DATA, 0xFF);
 }
 
 void init_pic() { remap_pic(0x20, 0x28); }
 
-void pic_eoi(int irq) {
-	if (irq >= 8) {
+void pic_eoi(int irq_num) {
+	if (irq_num >= 8) {
 		port_byte_out(PIC2_COMMAND, PIC_EOI);
 	}
 
 	port_byte_out(PIC1_COMMAND, PIC_EOI);
+}
+
+// configure PIC to ignore the specified IRQ number
+void pic_set_mask(int irq_num) {
+	uint16_t port;
+	uint8_t value;
+
+	if (irq_num < 8) {
+		port = PIC1_DATA;
+	}
+	else {
+		port = PIC2_DATA;
+		irq_num -= 8;
+	}
+	value = port_byte_in(port) | (1 << irq_num);
+	port_byte_out(port, value);
+}
+
+// configure PIC to be aware of the specified IRQ number
+void pic_unset_mask(int irq_num) {
+	uint16_t port;
+	uint8_t value;
+
+	if (irq_num < 8) {
+		port = PIC1_DATA;
+	}
+	else {
+		port = PIC2_DATA;
+		irq_num -= 8;
+	}
+	value = port_byte_in(port) & ~(1 << irq_num);
+	port_byte_out(port, value);
 }
