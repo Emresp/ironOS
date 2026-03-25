@@ -1,7 +1,31 @@
 #include <cpu/gdt.h>
 #include <cpu/idt.h>
 #include <debug/logging.h>
+#include <limine/limine.h>
+#include <mem/pmm.h>
 #include <pmio/pic.h>
+
+// Limine base revision and request markers
+__attribute__((used, section(".limine_requests"))) static volatile uint64_t limine_base_revision[] =
+    LIMINE_BASE_REVISION(6);
+
+__attribute__((
+    used, section(".limine_requests_start"))) static volatile uint64_t limine_requests_start[] =
+    LIMINE_REQUESTS_START_MARKER;
+
+__attribute__((used,
+               section(".limine_requests_end"))) static volatile uint64_t limine_requests_end[] =
+    LIMINE_REQUESTS_END_MARKER;
+
+// Limine requests
+__attribute__((
+    used,
+    section(".limine_requests"))) static volatile struct limine_memmap_request memmap_request = {
+    .id = LIMINE_MEMMAP_REQUEST_ID, .revision = 0};
+
+__attribute__((
+    used, section(".limine_requests"))) static volatile struct limine_hhdm_request hhdm_request = {
+    .id = LIMINE_HHDM_REQUEST_ID, .revision = 0};
 
 // Halt and catch fire function
 static void hcf(void) {
@@ -29,6 +53,17 @@ void kmain(void) {
 	log(LL_INFO, "Initilized IDT");
 	init_pic();
 	log(LL_INFO, "Initilized PIC");
+
+	if (!memmap_request.response || !hhdm_request.response) {
+		log(LL_ERR, "Failed to get memory map or HHDM from Limine");
+		hcf();
+	}
+	if (pmm_init(memmap_request.response, hhdm_request.response)) {
+		log(LL_ERR, "Failed to initilize PMM");
+		hcf();
+	}
+	log(LL_INFO, "Initilized PMM");
+
 	log(LL_INFO, "Kernel initilization succeeded");
 
 	// Stop execution
