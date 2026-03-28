@@ -70,11 +70,11 @@ $(BUILD_DIR)/$(OUT): $(OBJS)
 
 $(BUILD_DIR)/%.c.o: %.c
 	mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) $(CPPFLAGS) -MT $@ -c $< -o $@
 
 $(BUILD_DIR)/%.S.o: %.S
 	mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) $(CPPFLAGS) -MT $@ -c $< -o $@
 
 clean:
 	rm -rf $(BUILD_DIR)
